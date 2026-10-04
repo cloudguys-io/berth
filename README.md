@@ -18,7 +18,7 @@ small Go binary that runs inside your cluster.
 This repository is the **public distribution** for Berth, the Helm chart,
 release binaries, and container image live here. The source is not public.
 
-- Website & sign-up: **https://berth.agrohi.com**
+- Website & sign-up: **https://berth.cloudguys.io**
 - Container image: `ghcr.io/unishsys/berth`
 - Helm chart (OCI): `oci://ghcr.io/unishsys/charts/berth`
 
@@ -33,21 +33,20 @@ upgrade; the dashboard always stays fully readable.
 
 | Edition | Limits | How to get it |
 | --- | --- | --- |
-| **Community** | up to 10 nodes, single cluster | free, [create an account](https://berth.agrohi.com) for a key |
-| **Enterprise** | unlimited nodes, per cluster | subscription with a 14-day trial, [see pricing](https://berth.agrohi.com/pricing/) |
+| **Community** | up to 10 nodes, single cluster | free, [create an account](https://berth.cloudguys.io) for a key |
+| **Enterprise** | unlimited nodes, per cluster | node allowance agreed per deployment, [see pricing](https://berth.cloudguys.io/pricing/) |
 
 > SSO/OIDC, RBAC, audit log, multi-cluster, and private agentic AI are the
-> Enterprise roadmap, [design partners welcome](https://berth.agrohi.com/pricing/).
+> Enterprise roadmap, [design partners welcome](https://berth.cloudguys.io/pricing/).
 
 ## 1. Register & get a license key
 
-1. Create a free account at **https://berth.agrohi.com**. A **Community** key is
+1. Create a free account at **https://berth.cloudguys.io**. A **Community** key is
    issued to you automatically.
-2. For unlimited evaluation, [start a 14-day trial](https://berth.agrohi.com/pricing/);
-   to subscribe, pick a plan at checkout.
+2. For Enterprise, or to evaluate beyond 10 nodes, [talk to us](https://berth.cloudguys.io/pricing/).
 3. Your current key (and a personalized install guide) is always available on
-   your **dashboard** at https://berth.agrohi.com. Keys are renewed/extended
-   automatically while your subscription is active.
+   your **dashboard** at https://berth.cloudguys.io. Community keys are renewed
+   when you sign in.
 
 You can install and **view** your cluster without any key, you only need one to
 make changes.
@@ -69,12 +68,10 @@ Pin a specific version (recommended for production), or install a pre-release:
 
 ```sh
 helm upgrade --install berth oci://ghcr.io/unishsys/charts/berth \
-  --version 1.0.1 --namespace berth --create-namespace
-
-# pre-releases (e.g. betas) must be requested by exact version:
-helm upgrade --install berth oci://ghcr.io/unishsys/charts/berth \
-  --version 1.0.0-beta --namespace berth --create-namespace
+  --version 0.4.1 --namespace berth --create-namespace
 ```
+
+Pre-release chart versions, when published, must be requested by their exact version.
 
 Read your auth token and reach the UI:
 
@@ -120,7 +117,7 @@ export AUTH_TOKEN="$(openssl rand -hex 32)"
 docker run --rm -p 127.0.0.1:8081:8081 \
   -e AUTH_MODE=token -e AUTH_TOKEN -e BIND_ADDRESS=0.0.0.0 \
   -v "$HOME/.kube/config:/home/nonroot/.kube/config:ro" \
-  ghcr.io/unishsys/berth:1.0.1 remotecluster
+  ghcr.io/unishsys/berth:0.4.1 remotecluster
 # then open http://localhost:8081/  (AUTH_MODE defaults to token; configure AUTH_TOKEN with at least 32 random characters)
 ```
 
@@ -128,7 +125,7 @@ Images are multi-arch (`linux/amd64`, `linux/arm64`), ship an SBOM + provenance,
 and are **cosign-signed** (keyless). Verify:
 
 ```sh
-cosign verify ghcr.io/unishsys/berth:1.0.1 \
+cosign verify ghcr.io/unishsys/berth:0.4.1 \
   --certificate-identity-regexp 'https://github.com/unishsys/.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -141,8 +138,8 @@ against `SHA256SUMS`, then run it against your kubeconfig:
 
 ```sh
 # macOS (Apple Silicon) example
-curl -sSLO https://github.com/unishsys/berth/releases/download/v1.0.1/berth-darwin-arm64
-curl -sSLO https://github.com/unishsys/berth/releases/download/v1.0.1/SHA256SUMS
+curl -sSLO https://github.com/unishsys/berth/releases/download/v0.4.1/berth-darwin-arm64
+curl -sSLO https://github.com/unishsys/berth/releases/download/v0.4.1/SHA256SUMS
 shasum -a 256 -c SHA256SUMS --ignore-missing   # verify
 chmod +x berth-darwin-arm64
 ./berth-darwin-arm64 remotecluster           # serves the UI on :8081
@@ -262,7 +259,7 @@ an anonymous caller can never spend your key.
 The rootfs is read-only, so the ledger needs a writable volume: enable
 `ai.persistence` (or leave it off to keep usage/memory in-memory). The store is a
 single-process SQLite file. Use one replica with Recreate and a local RWO block volume. NFS/RWX and overlapping replicas are unsupported. Cloud providers require persistent storage. Most of this is also editable at runtime in **Settings → AI**
-(requires auth). Full reference: `https://berth.agrohi.com/how-ai-works/`.
+(requires auth). Full reference: `https://berth.cloudguys.io/how-ai-works/`.
 
 ### Recipes
 
@@ -385,6 +382,6 @@ extraVolumeMounts:
 
 ## Support & legal
 
-- Docs & guides: https://berth.agrohi.com
+- Docs & guides: https://berth.cloudguys.io
 - Support: support@agrohi.com
-- License: [EULA](LICENSE) · Privacy & Terms: https://berth.agrohi.com
+- License: [EULA](LICENSE) · Privacy & Terms: https://berth.cloudguys.io
