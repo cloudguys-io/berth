@@ -1,0 +1,48 @@
+{
+  "id": "oomkilled",
+  "title": "OOMKilled container: memory limit too low",
+  "category": "diagnosis",
+  "description": "worker is killed with exit 137. Describe shows OOMKilled with a 256Mi limit; the right-sizing report shows the working set at the limit.",
+  "prompt": "The worker deployment in the jobs namespace keeps dying every few minutes. Why?",
+  "fixture": {
+    "snapshot": {
+      "pods": [{"namespace": "jobs", "name": "worker-5f4c8d7b9-vt2xr", "phase": "Running", "ready": "1/1", "restarts": 9, "reason": "OOMKilled"}],
+      "events": [
+        {"type": "Warning", "reason": "BackOff", "object": "pod/worker-5f4c8d7b9-vt2xr", "namespace": "jobs", "message": "Back-off restarting failed container worker", "age": "3m"}
+      ],
+      "health": {
+        "version": "v1.31.4", "nodesReady": 3, "nodesTotal": 3, "namespaces": 6, "podsTotal": 5,
+        "podsByPhase": {"Running": 5}, "cpuCommitPct": 42, "memCommitPct": 49, "cpuUtilPct": 22, "memUtilPct": 41,
+        "verdict": "balanced", "metricsAvailable": true,
+        "problemPods": [{"namespace": "jobs", "name": "worker-5f4c8d7b9-vt2xr", "phase": "Running", "ready": "1/1", "restarts": 9, "reason": "OOMKilled"}]
+      }
+    },
+    "live": {
+      "describes": {
+        "pod/jobs/worker-5f4c8d7b9-vt2xr": "Name: worker-5f4c8d7b9-vt2xr\nNamespace: jobs\nStatus: Running\nContainers:\n  worker:\n    Image: registry.example.com/jobs/worker:3.1.0\n    State: Running\n    Last State: Terminated, Reason: OOMKilled, Exit Code: 137\n    Restart Count: 9\n    Requests: cpu 100m, memory 128Mi\n    Limits: memory 256Mi",
+        "deployment/jobs/worker": "Name: worker\nNamespace: jobs\nReplicas: 1 desired | 1 ready\nStrategy: RollingUpdate\nTemplate container worker: requests memory 128Mi, limits memory 256Mi"
+      },
+      "workloadResources": {
+        "deployment/jobs/worker": "Deployment jobs/worker\n  container worker: requests cpu=100m mem=128Mi; limits mem=256Mi; QoS=Burstable\n    usage (metrics-server): cpu=64m mem=251Mi (98% of the 256Mi limit)\n    verdict: memory near limit, OOM risk; under-provisioned memory",
+        "pod/jobs/worker-5f4c8d7b9-vt2xr": "Pod jobs/worker-5f4c8d7b9-vt2xr\n  container worker: requests cpu=100m mem=128Mi; limits mem=256Mi; QoS=Burstable\n    usage (metrics-server): cpu=64m mem=251Mi (98% of the 256Mi limit)\n    verdict: memory near limit, OOM risk; under-provisioned memory"
+      },
+      "logs": {
+        "pod/jobs/worker-5f4c8d7b9-vt2xr": {
+          "current": "2026-10-05T09:20:11Z INFO batch 4412 loaded, 180000 rows\n2026-10-05T09:20:19Z INFO building in-memory index",
+          "previous": "2026-10-05T09:15:03Z INFO batch 4411 loaded, 180000 rows\n2026-10-05T09:15:12Z INFO building in-memory index"
+        }
+      }
+    }
+  },
+  "criteria": {
+    "toolChecks": [
+      {"id": "inspects-workload", "desc": "inspects the workload (describe_resource or analyze_workload_resources) before answering", "tools": ["describe_resource", "analyze_workload_resources"]}
+    ],
+    "maxToolCalls": 6,
+    "mustMatch": [
+      {"id": "names-oom", "desc": "identifies OOMKilled / out of memory (exit 137)", "any": ["OOM", "out[- ]of[- ]memory", "137"]},
+      {"id": "cites-limit", "desc": "cites the 256Mi memory limit as the constraint", "any": ["256\\s?Mi"]},
+      {"id": "recommends-raise", "desc": "recommends raising the memory limit (or fixing memory use)", "any": ["(rais|increas|bump|higher|larger|more).{0,60}(memory|limit)", "(memory|limit).{0,60}(rais|increas|bump|higher|larger)"]}
+    ]
+  }
+}

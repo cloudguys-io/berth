@@ -1,0 +1,44 @@
+{
+  "id": "crashloop-missing-config",
+  "title": "Crashlooping pod: missing required config",
+  "category": "diagnosis",
+  "description": "api pod restarts every minute. The cause is only visible in the PREVIOUS container logs: a required environment variable is unset because the ConfigMap key was renamed.",
+  "prompt": "The api pod in the shop namespace keeps restarting. What's wrong and how do I fix it?",
+  "fixture": {
+    "snapshot": {
+      "pods": [{"namespace": "shop", "name": "api-6b8f7c9d44-q7zkd", "phase": "Running", "ready": "0/1", "restarts": 14, "reason": "CrashLoopBackOff"}],
+      "events": [
+        {"type": "Warning", "reason": "BackOff", "object": "pod/api-6b8f7c9d44-q7zkd", "namespace": "shop", "message": "Back-off restarting failed container api in pod api-6b8f7c9d44-q7zkd_shop", "age": "20s"}
+      ],
+      "health": {
+        "version": "v1.31.4", "nodesReady": 3, "nodesTotal": 3, "namespaces": 6, "podsTotal": 5,
+        "podsByPhase": {"Running": 5}, "cpuCommitPct": 42, "memCommitPct": 49, "cpuUtilPct": 22, "memUtilPct": 40,
+        "verdict": "balanced", "metricsAvailable": true,
+        "problemPods": [{"namespace": "shop", "name": "api-6b8f7c9d44-q7zkd", "phase": "Running", "ready": "0/1", "restarts": 14, "reason": "CrashLoopBackOff"}]
+      },
+      "focus": {"kind": "Pod", "namespace": "shop", "name": "api-6b8f7c9d44-q7zkd"}
+    },
+    "live": {
+      "describes": {
+        "pod/shop/api-6b8f7c9d44-q7zkd": "Name: api-6b8f7c9d44-q7zkd\nNamespace: shop\nStatus: Running\nContainers:\n  api:\n    Image: registry.example.com/shop/api:1.8.2\n    State: Waiting (CrashLoopBackOff)\n    Last State: Terminated (Error), Exit Code: 1\n    Restart Count: 14\n    Limits: memory 512Mi\n    Environment Variables from:\n      api-config ConfigMap (optional=false)\n    Readiness: http-get :8080/healthz\nConditions: Ready=False, ContainersReady=False"
+      },
+      "logs": {
+        "pod/shop/api-6b8f7c9d44-q7zkd": {
+          "current": "",
+          "previous": "2026-10-05T09:14:02Z INFO starting api 1.8.2\n2026-10-05T09:14:02Z INFO loading configuration\n2026-10-05T09:14:02Z FATAL required setting DATABASE_URL is empty (expected key DATABASE_URL in ConfigMap api-config; found keys: DB_URL, LOG_LEVEL)\n2026-10-05T09:14:02Z INFO exiting with status 1"
+        }
+      }
+    }
+  },
+  "criteria": {
+    "toolChecks": [
+      {"id": "read-crashed-logs", "desc": "reads the PREVIOUS container logs (get_logs previous=true), the only place the cause is visible", "tools": ["get_logs"], "args": {"previous": true}}
+    ],
+    "maxToolCalls": 6,
+    "mustMatch": [
+      {"id": "names-missing-var", "desc": "names DATABASE_URL as the missing/empty setting", "any": ["DATABASE_URL"]},
+      {"id": "names-key-mismatch", "desc": "connects it to the ConfigMap key (api-config / DB_URL rename)", "any": ["DB_URL", "api-config"]},
+      {"id": "proposes-fix", "desc": "proposes a concrete fix (add/rename the key, or set the variable)", "any": ["(add|rename|restore|set|correct|fix|update|change).{0,80}(DATABASE_URL|DB_URL|api-config)", "(DATABASE_URL|DB_URL).{0,80}(add|rename|restore|set|correct|fix|update|change)"]}
+    ]
+  }
+}

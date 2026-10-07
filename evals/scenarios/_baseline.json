@@ -1,0 +1,40 @@
+{
+  "id": "_baseline",
+  "title": "Shared healthy baseline merged under every scenario",
+  "prompt": "n/a",
+  "fixture": {
+    "snapshot": {
+      "snapshotAge": "8s",
+      "pods": [
+        {"namespace": "kube-system", "name": "coredns-5d78c9869d-x2k4q", "phase": "Running", "ready": "1/1", "restarts": 0},
+        {"namespace": "kube-system", "name": "metrics-server-6f6cdbf67d-9b7lw", "phase": "Running", "ready": "1/1", "restarts": 0},
+        {"namespace": "monitoring", "name": "prometheus-0", "phase": "Running", "ready": "2/2", "restarts": 0},
+        {"namespace": "ingress", "name": "gateway-7c9d8f6b5-m4nzp", "phase": "Running", "ready": "1/1", "restarts": 0}
+      ],
+      "events": [
+        {"type": "Normal", "reason": "Pulled", "object": "pod/gateway-7c9d8f6b5-m4nzp", "namespace": "ingress", "message": "Container image already present on machine", "age": "2h"}
+      ],
+      "nodes": [
+        {"name": "node-a", "ready": true, "cpuCommitPct": 41, "memCommitPct": 48, "cpuUtilPct": 22, "memUtilPct": 40},
+        {"name": "node-b", "ready": true, "cpuCommitPct": 38, "memCommitPct": 45, "cpuUtilPct": 19, "memUtilPct": 37},
+        {"name": "node-c", "ready": true, "cpuCommitPct": 44, "memCommitPct": 50, "cpuUtilPct": 25, "memUtilPct": 42}
+      ],
+      "health": {
+        "version": "v1.31.4", "nodesReady": 3, "nodesTotal": 3, "namespaces": 5, "podsTotal": 4,
+        "podsByPhase": {"Running": 4}, "cpuCommitPct": 41, "memCommitPct": 48, "cpuUtilPct": 22, "memUtilPct": 40,
+        "verdict": "balanced", "metricsAvailable": true
+      },
+      "capacity": {
+        "metricsAvailable": true, "pdbCount": 2, "unscheduledPods": 0,
+        "pools": [{
+          "key": "m5.large/zone-a/no-taints", "instanceType": "m5.large", "zone": "zone-a", "nodes": 3, "nodesReady": 3,
+          "cpuAllocCores": 5.8, "memAllocGiB": 22.0, "podSlots": 87, "cpuReqCores": 2.4, "memReqGiB": 10.5, "scheduledPods": 4,
+          "cpuUsedCores": 1.3, "memUsedGiB": 8.9, "cpuCommitPct": 41, "memCommitPct": 48, "cpuUtilPct": 22, "memUtilPct": 40,
+          "podDensityPct": 5, "bindingConstraint": "memory", "classification": "balanced", "rationale": "commit and usage both moderate"
+        }]
+      }
+    },
+    "live": {}
+  },
+  "criteria": {}
+}

@@ -1,0 +1,102 @@
+{
+  "id": "multi-turn-followup",
+  "title": "Follow-up question that depends on the previous turn",
+  "category": "multi-turn",
+  "description": "Second turn after an OOMKilled diagnosis. 'It' means the worker deployment and its 256Mi limit; the agent must not ask which workload, must recommend a concrete limit, and must ground 'will it fit' in cluster capacity.",
+  "turns": [
+    {
+      "role": "user",
+      "content": "Why is the worker deployment in the jobs namespace restarting?"
+    },
+    {
+      "role": "assistant",
+      "content": "The worker container is being OOMKilled (exit code 137). Its memory limit is 256Mi and live usage is 251Mi, 98% of the limit, so it is killed whenever it builds its in-memory index. Raising the memory limit should stop the restarts."
+    },
+    {
+      "role": "user",
+      "content": "OK. What should I raise it to, and will that fit on our nodes?"
+    }
+  ],
+  "fixture": {
+    "snapshot": {
+      "pods": [
+        {
+          "namespace": "jobs",
+          "name": "worker-5f4c8d7b9-vt2xr",
+          "phase": "Running",
+          "ready": "1/1",
+          "restarts": 9,
+          "reason": "OOMKilled"
+        }
+      ],
+      "events": [
+        {
+          "type": "Warning",
+          "reason": "BackOff",
+          "object": "pod/worker-5f4c8d7b9-vt2xr",
+          "namespace": "jobs",
+          "message": "Back-off restarting failed container worker",
+          "age": "3m"
+        }
+      ]
+    },
+    "live": {
+      "describes": {
+        "deployment/jobs/worker": "Name: worker\nNamespace: jobs\nReplicas: 1 desired | 1 ready\nStrategy: RollingUpdate\nTemplate container worker: requests memory 128Mi, limits memory 256Mi"
+      },
+      "workloadResources": {
+        "deployment/jobs/worker": "Right-sizing Deployment jobs/worker (requests/limits vs live usage):\n\nPod worker-5f4c8d7b9-vt2xr (QoS Burstable):\n  [worker] cpu: req=100m lim=- use=64m | mem: req=128Mi lim=256Mi use=251Mi\n     -> memory usage 251Mi is >90% of the limit 256Mi, OOMKill risk; memory usage exceeds the request, under-provisioned, eviction risk under pressure\nGuidance: set requests near steady-state usage (with headroom); a memory limit below peak usage risks OOMKill; requests far above usage waste schedulable capacity. Confirm with 1-2 weeks of history before large changes.\n"
+      }
+    }
+  },
+  "criteria": {
+    "toolChecks": [
+      {
+        "id": "grounds-answer-in-cluster-data",
+        "desc": "checks live usage or node capacity before answering",
+        "tools": [
+          "analyze_workload_resources",
+          "analyze_capacity",
+          "cluster_health"
+        ]
+      }
+    ],
+    "maxToolCalls": 4,
+    "mustMatch": [
+      {
+        "id": "gives-a-concrete-limit",
+        "desc": "recommends a concrete memory limit with real headroom over the 251Mi usage (at least 384Mi; 300Mi is concrete but leaves almost none)",
+        "any": [
+          "(384|448|512|640|768|1024)\\s?Mi",
+          "\\b(0\\.75|1|1\\.5|2)\\s?Gi"
+        ]
+      },
+      {
+        "id": "answers-will-it-fit",
+        "desc": "answers whether it fits on the nodes",
+        "any": [
+          "(fit|fits|room|headroom|enough).{0,100}(node|memory|capacity|cluster)",
+          "(node|memory|capacity|cluster).{0,100}(fit|room|headroom|enough)"
+        ]
+      },
+      {
+        "id": "keeps-context",
+        "desc": "stays on the worker deployment from the first turn",
+        "any": [
+          "worker"
+        ],
+        "critical": false
+      }
+    ],
+    "mustNotMatch": [
+      {
+        "id": "does-not-re-ask-context",
+        "desc": "does not ask which workload the user means",
+        "any": [
+          "(which|what) (deployment|workload|application|service)\\b[^.?!]{0,80}\\?",
+          "could you (tell|clarify|specify|confirm) (me )?(which|what)"
+        ]
+      }
+    ]
+  }
+}

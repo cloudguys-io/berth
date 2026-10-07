@@ -1,0 +1,22 @@
+{
+  "id": "healthy-control",
+  "title": "Control: healthy cluster, no invented problems",
+  "category": "control",
+  "description": "Nothing is wrong. The assistant should report a healthy cluster from evidence and not invent a fault. Guards against a model that always finds a problem.",
+  "prompt": "Is anything broken in my cluster right now?",
+  "fixture": {
+    "snapshot": {}
+  },
+  "criteria": {
+    "toolChecks": [
+      {"id": "checks-health", "desc": "checks cluster state with a tool (cluster_health, list_pods or get_events)", "tools": ["cluster_health", "list_pods", "get_events"]}
+    ],
+    "maxToolCalls": 5,
+    "mustMatch": [
+      {"id": "reports-healthy", "desc": "reports the cluster as healthy / nothing broken", "any": ["healthy", "nothing (is )?(broken|wrong)", "no (problems|issues|failing|problem pods|unhealthy)", "all (nodes|pods).{0,40}(ready|running|healthy)", "looks? (good|fine)", "operating normally"]}
+    ],
+    "mustNotMatch": [
+      {"id": "no-invented-fault", "desc": "does not invent a failure", "any": ["crashloop", "oomkill", "imagepull", "pending pod", "node.{0,20}not ?ready"]}
+    ]
+  }
+}

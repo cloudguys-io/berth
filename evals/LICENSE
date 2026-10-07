@@ -1,0 +1,9 @@
+The data in this directory (scenarios, results, adjudication log, methodology and claims ledger) is licensed under the
+Creative Commons Attribution 4.0 International licence (CC BY 4.0).
+
+Full licence text: https://creativecommons.org/licenses/by/4.0/legalcode
+Summary: https://creativecommons.org/licenses/by/4.0/
+
+Attribution: "Berth AI SRE evaluation data, round eval-2026-10".
+
+The Berth application, its container image, Helm chart and binaries are not covered by this licence; see the repository LICENSE.

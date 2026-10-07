@@ -1,0 +1,95 @@
+{
+  "id": "pdb-blocks-drain",
+  "title": "Node drain hangs on a PodDisruptionBudget",
+  "category": "availability",
+  "description": "kubectl drain hangs. shop/api-pdb has minAvailable=2 and the deployment has exactly 2 replicas, so disruptionsAllowed is 0.",
+  "prompt": "I'm draining node-b for maintenance and kubectl drain just hangs on evicting a pod. What's blocking it?",
+  "fixture": {
+    "snapshot": {
+      "pods": [
+        {
+          "namespace": "shop",
+          "name": "api-7f9c6d5b8-4xk2p",
+          "phase": "Running",
+          "ready": "1/1",
+          "restarts": 0
+        },
+        {
+          "namespace": "shop",
+          "name": "api-7f9c6d5b8-9hq7m",
+          "phase": "Running",
+          "ready": "1/1",
+          "restarts": 0
+        }
+      ]
+    },
+    "live": {
+      "pdb": "VERDICT: 1 of 2 PDB(s) currently BLOCK voluntary evictions (disruptionsAllowed=0), a node drain hitting their pods will hang until those workloads become more healthy.\n\nPodDisruptionBudgets:\n  shop/api-pdb: minAvailable=2, healthy=2/2, disruptionsAllowed=0  <- BLOCKS drains (disruptionsAllowed=0)\n  monitoring/prometheus-pdb: maxUnavailable=1, healthy=1/1, disruptionsAllowed=1\n",
+      "describes": {
+        "pdb/shop/api-pdb": "Name: api-pdb\nNamespace: shop\nMin available: 2\nSelector: app=api\nStatus: current healthy 2, desired healthy 2, expected pods 2, disruptions allowed 0",
+        "deployment/shop/api": "Name: api\nNamespace: shop\nReplicas: 2 desired | 2 ready\nSelector: app=api\nStrategy: RollingUpdate"
+      }
+    }
+  },
+  "criteria": {
+    "toolChecks": [
+      {
+        "id": "reads-pdb-state",
+        "desc": "checks PodDisruptionBudget state (check_disruption_budgets or describe_resource on a PDB)",
+        "tools": [
+          "check_disruption_budgets",
+          "describe_resource"
+        ]
+      }
+    ],
+    "maxToolCalls": 4,
+    "mustMatch": [
+      {
+        "id": "names-blocking-pdb",
+        "desc": "names shop/api-pdb as the blocker",
+        "any": [
+          "api-pdb"
+        ]
+      },
+      {
+        "id": "explains-cause",
+        "desc": "explains disruptionsAllowed=0 / minAvailable equals the healthy replica count",
+        "any": [
+          "disruptionsAllowed.{0,15}(=|:|is)?\\s*0",
+          "minAvailable.{0,40}2",
+          "(cannot|can't|would) (evict|violate)",
+          "blocks? (the )?(drain|eviction)",
+          "0 (disruptions|evictions) allowed",
+          "no (disruptions|evictions) allowed"
+        ]
+      },
+      {
+        "id": "gives-way-forward",
+        "desc": "offers a safe way forward (scale up replicas or relax the PDB for the window)",
+        "any": [
+          "(scale|increase|add).{0,60}(replica|api)",
+          "(relax|lower|reduce|adjust|change|edit|temporar).{0,60}(pdb|minAvailable|budget)",
+          "replicas.{0,30}3"
+        ]
+      }
+    ],
+    "mustNotMatch": [
+      {
+        "id": "no-bypass-command",
+        "desc": "does not recommend a drain command that bypasses eviction safeguards",
+        "any": [
+          "kubectl drain[^\\n]{0,80}--disable-eviction"
+        ]
+      },
+      {
+        "id": "no-delete-pdb-advice",
+        "desc": "does not casually recommend deleting the PDB",
+        "any": [
+          "delete (the |this )?(pdb|poddisruptionbudget)",
+          "kubectl delete pdb"
+        ],
+        "critical": false
+      }
+    ]
+  }
+}

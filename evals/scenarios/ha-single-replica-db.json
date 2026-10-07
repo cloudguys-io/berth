@@ -1,0 +1,116 @@
+{
+  "id": "ha-single-replica-db",
+  "title": "HA scan: single-instance operator database and unspread replicas",
+  "category": "availability",
+  "description": "Asked whether databases are highly available. ledger-db is a single-instance operator cluster, redis is one replica, api has 3 replicas with no spread. Everything is Running, which is the trap: running is not highly available.",
+  "prompt": "Are my databases highly available? What would break if a node died?",
+  "fixture": {
+    "snapshot": {
+      "pods": [
+        {
+          "namespace": "data",
+          "name": "ledger-db-1",
+          "phase": "Running",
+          "ready": "1/1",
+          "restarts": 0
+        },
+        {
+          "namespace": "cache",
+          "name": "redis-6c7d8f9b5-h2kqt",
+          "phase": "Running",
+          "ready": "1/1",
+          "restarts": 0
+        },
+        {
+          "namespace": "shop",
+          "name": "api-7f9c6d5b8-4xk2p",
+          "phase": "Running",
+          "ready": "1/1",
+          "restarts": 0
+        },
+        {
+          "namespace": "shop",
+          "name": "api-7f9c6d5b8-9hq7m",
+          "phase": "Running",
+          "ready": "1/1",
+          "restarts": 0
+        },
+        {
+          "namespace": "shop",
+          "name": "api-7f9c6d5b8-tz6vw",
+          "phase": "Running",
+          "ready": "1/1",
+          "restarts": 0
+        }
+      ]
+    },
+    "live": {
+      "availability": "VERDICT WITHIN READABLE RESOURCES: 2 workloads are single points of failure (single replica/instance); 1 multi-replica workloads lack anti-affinity/topology-spread (replicas can co-locate). Healthy is not the same as highly available.\n\nAvailability / single-point-of-failure scan (redundancy, not just health):\n\nSINGLE POINTS OF FAILURE (2), one replica/instance, so a pod or node loss takes them down:\n  - Cluster data/ledger-db (postgresql.cnpg.io): instances=1, single instance, no redundancy\n  - Deployment cache/redis: 1 replica, no redundancy\n\nNOT TRULY HIGHLY AVAILABLE (1), multiple replicas but nothing forces them onto different nodes/zones:\n  - Deployment shop/api: 3 replicas but no pod anti-affinity or topology-spread, all replicas can land on one node/zone\n\nRedundant workloads (>1 replica): 1\nPodDisruptionBudgets in cluster: 2 (a PDB can't protect a single-replica workload, evicting its one pod always violates availability).\nNotes: DaemonSets are per-node by design and excluded. Operator custom resources are matched generically by a replica/instance field, so an operator using an unusual field name may be missed, use list_resources/get_resource to confirm. True HA also needs replicas actually spread across nodes/zones and, for stateful data, automated failover.\n"
+    }
+  },
+  "criteria": {
+    "toolChecks": [
+      {
+        "id": "ran-availability-scan",
+        "desc": "runs the whole-cluster availability scan (check_availability)",
+        "tools": [
+          "check_availability"
+        ]
+      }
+    ],
+    "maxToolCalls": 4,
+    "mustMatch": [
+      {
+        "id": "names-ledger-db-spof",
+        "desc": "says ledger-db is a single instance / single point of failure",
+        "any": [
+          "ledger-db.{0,200}(single|one) (instance|replica)",
+          "ledger-db.{0,200}(SPOF|single point|instances=1|no redundancy|not (highly )?available)",
+          "(single|one) (instance|replica).{0,200}ledger-db",
+          "(SPOF|single point).{0,200}ledger-db"
+        ]
+      },
+      {
+        "id": "says-not-ha",
+        "desc": "states the databases are NOT highly available",
+        "any": [
+          "not (truly |actually |really |fully )?(highly available|HA|redundant)",
+          "single point",
+          "SPOF",
+          "no redundancy",
+          "would (go down|be down|fail|stop)"
+        ]
+      },
+      {
+        "id": "mentions-redis",
+        "desc": "also flags the single-replica redis",
+        "any": [
+          "redis"
+        ],
+        "critical": false
+      },
+      {
+        "id": "flags-unspread-replicas",
+        "desc": "flags that api has replicas but no anti-affinity or topology spread",
+        "any": [
+          "anti-?affinity",
+          "topology[- ]spread",
+          "co-?locat",
+          "same node",
+          "one node",
+          "single node"
+        ],
+        "critical": false
+      }
+    ],
+    "mustNotMatch": [
+      {
+        "id": "no-false-ha-claim",
+        "desc": "does not claim the databases are highly available",
+        "any": [
+          "(databases?|ledger-db|postgres(ql)?)\\W+(\\w+\\W+){0,3}(is|are) (all |fully |already |currently )*(highly available|HA)\\b"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,124 @@
+{
+  "id": "rightsize-overprovisioned",
+  "title": "Right-sizing: heavily over-provisioned deployment with an unrequested sidecar",
+  "category": "capacity",
+  "description": "reports-api requests 2 CPU / 4Gi per pod and uses about 140m / 610Mi. A sidecar has no requests at all. One usage snapshot only, so a good answer asks for history before big changes.",
+  "prompt": "Is the reports-api deployment in analytics sized right? We seem to be paying for far more capacity than it uses.",
+  "fixture": {
+    "snapshot": {
+      "pods": [
+        {
+          "namespace": "analytics",
+          "name": "reports-api-6d9f7c8b5-k2x9a",
+          "phase": "Running",
+          "ready": "2/2",
+          "restarts": 0
+        },
+        {
+          "namespace": "analytics",
+          "name": "reports-api-6d9f7c8b5-m4tqz",
+          "phase": "Running",
+          "ready": "2/2",
+          "restarts": 0
+        },
+        {
+          "namespace": "analytics",
+          "name": "reports-api-6d9f7c8b5-r7bwd",
+          "phase": "Running",
+          "ready": "2/2",
+          "restarts": 0
+        },
+        {
+          "namespace": "analytics",
+          "name": "reports-api-6d9f7c8b5-v9hjc",
+          "phase": "Running",
+          "ready": "2/2",
+          "restarts": 0
+        }
+      ]
+    },
+    "live": {
+      "describes": {
+        "deployment/analytics/reports-api": "Name: reports-api\nNamespace: analytics\nReplicas: 4 desired | 4 ready\nStrategy: RollingUpdate"
+      },
+      "workloadResources": {
+        "deployment/analytics/reports-api": "Right-sizing Deployment analytics/reports-api (requests/limits vs live usage):\n\nPod reports-api-6d9f7c8b5-k2x9a (QoS Burstable):\n  [api] cpu: req=2.00 lim=4.00 use=140m | mem: req=4.00Gi lim=8.00Gi use=610Mi\n     -> memory over-provisioned, usage 610Mi is <40% of request 4.00Gi; CPU over-provisioned, usage 140m is <40% of request 2.00\n  [log-shipper] cpu: req=- lim=- use=12m | mem: req=- lim=- use=48Mi\n     -> no resource requests set, the scheduler is blind to this container (Guaranteed/Burstable QoS impossible; risk of noisy-neighbour starvation); no memory limit, a leak can consume the node\n\nPod reports-api-6d9f7c8b5-m4tqz (QoS Burstable):\n  [api] cpu: req=2.00 lim=4.00 use=155m | mem: req=4.00Gi lim=8.00Gi use=640Mi\n     -> memory over-provisioned, usage 640Mi is <40% of request 4.00Gi; CPU over-provisioned, usage 155m is <40% of request 2.00\n  [log-shipper] cpu: req=- lim=- use=12m | mem: req=- lim=- use=48Mi\n     -> no resource requests set, the scheduler is blind to this container (Guaranteed/Burstable QoS impossible; risk of noisy-neighbour starvation); no memory limit, a leak can consume the node\n(showing 2 of 4 pods)\nGuidance: set requests near steady-state usage (with headroom); a memory limit below peak usage risks OOMKill; requests far above usage waste schedulable capacity. Confirm with 1-2 weeks of history before large changes.\n"
+      }
+    }
+  },
+  "criteria": {
+    "toolChecks": [
+      {
+        "id": "ran-workload-analysis",
+        "desc": "runs the workload right-sizing report (analyze_workload_resources)",
+        "tools": [
+          "analyze_workload_resources"
+        ]
+      }
+    ],
+    "maxToolCalls": 3,
+    "mustMatch": [
+      {
+        "id": "says-overprovisioned",
+        "desc": "says the workload is over-provisioned",
+        "any": [
+          "over-?provision",
+          "too (large|high|much)",
+          "oversized",
+          "wast",
+          "far (more|above)",
+          "can (be )?(lower|reduc)"
+        ]
+      },
+      {
+        "id": "cites-measured-numbers",
+        "desc": "cites the measured request vs usage figures",
+        "any": [
+          "140m",
+          "155m",
+          "2\\.00",
+          "2000m",
+          "\\b2 (cpu|core)",
+          "610\\s?Mi",
+          "4(\\.00)?\\s?Gi",
+          "<\\s?40\\s?%",
+          "\\b7\\s?%"
+        ]
+      },
+      {
+        "id": "recommends-lower-requests",
+        "desc": "recommends lowering requests",
+        "any": [
+          "(lower|reduc|decreas|cut|shrink|right-?siz).{0,80}(request|cpu|memory)",
+          "(request|cpu|memory).{0,60}(lower|reduc|decreas)",
+          "right-?siz\\w*[^.]{0,200}(request|cpu|memory)",
+          "requests?:\\s*\\{?\\s*cpu",
+          "(set|change|update|use|drop|bring)\\b.{0,40}requests?\\b.{0,40}(to|down)"
+        ]
+      },
+      {
+        "id": "asks-for-history",
+        "desc": "does not treat one snapshot as proof: asks for peak / percentile / history and keeps headroom",
+        "any": [
+          "peak",
+          "percentile",
+          "p9[0-9]",
+          "histor",
+          "over (a |the )?(week|days|time)",
+          "1.{0,3}2 weeks",
+          "headroom",
+          "burst"
+        ]
+      },
+      {
+        "id": "notes-sidecar-without-requests",
+        "desc": "notes the log-shipper sidecar has no requests",
+        "any": [
+          "log-shipper.{0,200}(no (resource )?requests?|requests? (not|aren't|are not) set|missing|without)",
+          "(no (resource )?requests?).{0,200}log-shipper"
+        ],
+        "critical": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,145 @@
+{
+  "id": "node-removal-capacity",
+  "title": "Node removal: low CPU, but memory is the binding constraint",
+  "category": "capacity",
+  "description": "CPU use is about 14% but 82% of allocatable memory is reserved. Removing a node would not fit. A good answer says not yet and names the checks it cannot run (history, bin-packing, PDBs, failure reserve).",
+  "prompt": "CPU usage across the cluster looks really low. Can I safely remove one of the three nodes to save money?",
+  "fixture": {
+    "snapshot": {
+      "nodes": [
+        {
+          "name": "node-a",
+          "ready": true,
+          "cpuCommitPct": 34,
+          "memCommitPct": 82,
+          "cpuUtilPct": 14,
+          "memUtilPct": 66
+        },
+        {
+          "name": "node-b",
+          "ready": true,
+          "cpuCommitPct": 36,
+          "memCommitPct": 84,
+          "cpuUtilPct": 15,
+          "memUtilPct": 70
+        },
+        {
+          "name": "node-c",
+          "ready": true,
+          "cpuCommitPct": 33,
+          "memCommitPct": 80,
+          "cpuUtilPct": 13,
+          "memUtilPct": 64
+        }
+      ],
+      "health": {
+        "version": "v1.31.4",
+        "nodesReady": 3,
+        "nodesTotal": 3,
+        "namespaces": 8,
+        "podsTotal": 41,
+        "podsByPhase": {
+          "Running": 41
+        },
+        "cpuCommitPct": 34,
+        "memCommitPct": 82,
+        "cpuUtilPct": 14,
+        "memUtilPct": 67,
+        "verdict": "memory-bound",
+        "note": "memory reservation is high while CPU is idle",
+        "metricsAvailable": true
+      },
+      "capacity": {
+        "metricsAvailable": true,
+        "pdbCount": 3,
+        "unscheduledPods": 0,
+        "pools": [
+          {
+            "key": "m5.large/zone-a/no-taints",
+            "instanceType": "m5.large",
+            "zone": "zone-a",
+            "nodes": 3,
+            "nodesReady": 3,
+            "cpuAllocCores": 5.8,
+            "memAllocGiB": 22.0,
+            "podSlots": 87,
+            "cpuReqCores": 2.0,
+            "memReqGiB": 18.0,
+            "scheduledPods": 41,
+            "cpuUsedCores": 0.8,
+            "memUsedGiB": 14.7,
+            "cpuCommitPct": 34,
+            "memCommitPct": 82,
+            "cpuUtilPct": 14,
+            "memUtilPct": 67,
+            "podDensityPct": 47,
+            "bindingConstraint": "memory",
+            "classification": "memory-bound",
+            "rationale": "memory reservation is 82% of allocatable; losing one of 3 nodes leaves about 67% of memory capacity against 82% reserved"
+          }
+        ]
+      }
+    },
+    "live": {}
+  },
+  "criteria": {
+    "toolChecks": [
+      {
+        "id": "ran-capacity-analysis",
+        "desc": "runs the node-pool capacity analysis (analyze_capacity)",
+        "tools": [
+          "analyze_capacity"
+        ]
+      }
+    ],
+    "maxToolCalls": 4,
+    "mustMatch": [
+      {
+        "id": "names-memory-constraint",
+        "desc": "identifies memory (not CPU) as the binding constraint",
+        "any": [
+          "memory.{0,80}(bind|constrain|commit|reserv|limit|bottleneck|tight|high)",
+          "\\b(82|84)\\s?%"
+        ]
+      },
+      {
+        "id": "advises-against-or-not-yet",
+        "desc": "does not say it is safe: says no / not yet / would not fit",
+        "any": [
+          "(not|n't|no)\\b.{0,40}(safe|safely|recommend|remove|enough|fit)",
+          "would (not fit|exceed|overcommit|leave)",
+          "cannot",
+          "shouldn't",
+          "do not remove",
+          "don't remove",
+          "hold off",
+          "before (you )?remov"
+        ]
+      },
+      {
+        "id": "lists-missing-checks",
+        "desc": "names the checks still needed (history/percentiles, bin-packing, PDBs, failure reserve)",
+        "any": [
+          "histor",
+          "percentile",
+          "bin-?pack",
+          "failure reserve",
+          "headroom",
+          "N\\+1",
+          "PDB",
+          "disruption budget"
+        ]
+      }
+    ],
+    "mustNotMatch": [
+      {
+        "id": "no-unsafe-yes",
+        "desc": "does not tell the operator removal is safe",
+        "any": [
+          "yes,? (you can|it'?s|it is) (safe|fine|okay|ok)",
+          "(can|could) safely remove (a|one|the) node"
+        ]
+      }
+    ]
+  }
+}

@@ -1,0 +1,143 @@
+{
+  "id": "crd-operator-discovery",
+  "title": "Operator-managed database: discover the CRD, then inspect it",
+  "category": "discovery",
+  "description": "The user does not know which operator runs the database. A CloudNativePG Cluster has 2 of 3 instances ready. The agent should discover the CRD instead of assuming an operator, and report the degraded state.",
+  "prompt": "Is the ledger database in the data namespace healthy? I don't remember which operator manages it.",
+  "fixture": {
+    "snapshot": {
+      "pods": [
+        {
+          "namespace": "data",
+          "name": "ledger-db-1",
+          "phase": "Running",
+          "ready": "1/1",
+          "restarts": 0
+        },
+        {
+          "namespace": "data",
+          "name": "ledger-db-2",
+          "phase": "Running",
+          "ready": "1/1",
+          "restarts": 0
+        },
+        {
+          "namespace": "data",
+          "name": "ledger-db-3",
+          "phase": "Running",
+          "ready": "0/1",
+          "restarts": 12,
+          "reason": "CrashLoopBackOff"
+        }
+      ],
+      "events": [
+        {
+          "type": "Warning",
+          "reason": "BackOff",
+          "object": "pod/ledger-db-3",
+          "namespace": "data",
+          "message": "Back-off restarting failed container postgres",
+          "age": "4m"
+        }
+      ]
+    },
+    "live": {
+      "apiResources": {
+        "postgres": "API kinds served by this cluster matching \"postgres\":\napiVersion=postgresql.cnpg.io/v1 kind=Backup (backups, namespaced)\napiVersion=postgresql.cnpg.io/v1 kind=Cluster (clusters, namespaced)\napiVersion=postgresql.cnpg.io/v1 kind=Pooler (poolers, namespaced)\nUse get_resource with an apiVersion+kind above (and list_resources to enumerate instances).",
+        "*": "API kinds served by this cluster:\napiVersion=postgresql.cnpg.io/v1 kind=Backup (backups, namespaced)\napiVersion=postgresql.cnpg.io/v1 kind=Cluster (clusters, namespaced)\napiVersion=postgresql.cnpg.io/v1 kind=Pooler (poolers, namespaced)\nUse get_resource with an apiVersion+kind above (and list_resources to enumerate instances)."
+      },
+      "resourceLists": {
+        "postgresql.cnpg.io/v1|Cluster|data": "Cluster (1) in data:\n  - ledger-db [instances ready 2/3, Waiting for the instances to become active]\n",
+        "postgresql.cnpg.io/v1|Cluster|": "Cluster (1) in data:\n  - ledger-db [instances ready 2/3, Waiting for the instances to become active]\n"
+      },
+      "resources": {
+        "postgresql.cnpg.io/v1|Cluster|data|ledger-db": "apiVersion: postgresql.cnpg.io/v1\nkind: Cluster\nmetadata:\n  name: ledger-db\n  namespace: data\nspec:\n  instances: 3\n  storage:\n    size: 100Gi\nstatus:\n  phase: Waiting for the instances to become active\n  instances: 3\n  readyInstances: 2\n  currentPrimary: ledger-db-1\n  instancesStatus:\n    healthy:\n    - ledger-db-1\n    - ledger-db-2\n    failed:\n    - ledger-db-3\n  conditions:\n  - type: Ready\n    status: \"False\"\n    reason: ClusterIsNotReady\n"
+      }
+    }
+  },
+  "criteria": {
+    "toolChecks": [
+      {
+        "id": "discovers-or-reads-operator-resource",
+        "desc": "uses the operator-discovery tools (list_resources or describe_resource with an apiVersion)",
+        "tools": [
+          "list_resources",
+          "describe_resource"
+        ],
+        "critical": false
+      },
+      {
+        "id": "reads-the-cluster-resource",
+        "desc": "reads the ledger-db Cluster custom resource",
+        "tools": [
+          "describe_resource"
+        ],
+        "args": {
+          "apiVersion": "postgresql.cnpg.io/v1",
+          "kind": "Cluster",
+          "name": "ledger-db"
+        },
+        "critical": false
+      }
+    ],
+    "maxToolCalls": 6,
+    "mustMatch": [
+      {
+        "id": "names-failing-instance",
+        "desc": "names ledger-db-3 as the failing instance (value-add: the question only asks whether the database is healthy)",
+        "any": [
+          "ledger-db-3"
+        ],
+        "critical": false
+      },
+      {
+        "id": "states-two-of-three",
+        "desc": "reports 2 of 3 instances ready / one instance down",
+        "any": [
+          "2\\s?(/|of|out of)\\s?3",
+          "two of (the )?three",
+          "one (of (the )?(three|3) )?(instance|replica|pod)s? (is |are )?(not ready|failing|down|crash)",
+          "(third|3rd) (replica|instance|pod)",
+          "ledger-db-3.{0,80}(fail|not ready|down|crash|unhealthy)",
+          "one (instance|replica) (has )?failed"
+        ]
+      },
+      {
+        "id": "says-not-fully-healthy",
+        "desc": "says the database is degraded / not fully healthy",
+        "any": [
+          "degrad",
+          "not (fully )?(healthy|ready)",
+          "unhealthy",
+          "partially",
+          "failing",
+          "crash",
+          "fail(ed|ing)?\\b",
+          "full (readiness|health)"
+        ]
+      }
+    ],
+    "mustNotMatch": [
+      {
+        "id": "no-healthy-claim",
+        "desc": "does not call the database healthy",
+        "any": [
+          "ledger-db (is|looks|appears|seems) (fully |completely )?healthy",
+          "(database|cluster) is (fully )?healthy and"
+        ]
+      },
+      {
+        "id": "no-wrong-operator",
+        "desc": "does not name an operator the cluster does not run",
+        "any": [
+          "crunchy",
+          "zalando",
+          "percona",
+          "stackgres",
+          "bitnami"
+        ],
+        "critical": false
+      }
+    ]
+  }
+}

@@ -1,0 +1,153 @@
+{
+  "id": "large-cluster-truncation",
+  "title": "Large cluster: the broken pods are past the end of a truncated pod list",
+  "category": "scale",
+  "description": "606 pods. A full list_pods result exceeds the 32 KiB tool-output cap and is cut off before the two broken pods, which cluster_health lists. A good agent uses the health summary instead of dumping pods, and does not call the cluster healthy.",
+  "prompt": "Is anything broken in the cluster right now? Give me the short version.",
+  "fixture": {
+    "podGroups": [
+      {
+        "namespace": "tenant-a",
+        "prefix": "web",
+        "count": 150
+      },
+      {
+        "namespace": "tenant-b",
+        "prefix": "web",
+        "count": 150
+      },
+      {
+        "namespace": "tenant-c",
+        "prefix": "web",
+        "count": 150
+      },
+      {
+        "namespace": "tenant-d",
+        "prefix": "web",
+        "count": 150
+      }
+    ],
+    "snapshot": {
+      "pods": [
+        {
+          "namespace": "payments",
+          "name": "ledger-writer-7d9f8b6c5-zq4xn",
+          "phase": "Running",
+          "ready": "0/1",
+          "restarts": 31,
+          "reason": "CrashLoopBackOff"
+        },
+        {
+          "namespace": "batch",
+          "name": "etl-nightly-28774560-p8vtd",
+          "phase": "Pending",
+          "ready": "0/1",
+          "restarts": 0,
+          "reason": "ImagePullBackOff"
+        }
+      ],
+      "events": [
+        {
+          "type": "Warning",
+          "reason": "BackOff",
+          "object": "pod/ledger-writer-7d9f8b6c5-zq4xn",
+          "namespace": "payments",
+          "message": "Back-off restarting failed container ledger-writer",
+          "age": "2m"
+        },
+        {
+          "type": "Warning",
+          "reason": "Failed",
+          "object": "pod/etl-nightly-28774560-p8vtd",
+          "namespace": "batch",
+          "message": "Failed to pull image \"registry.example.com/batch/etl:2026.10.4\": manifest unknown",
+          "age": "11m"
+        }
+      ],
+      "health": {
+        "version": "v1.31.4",
+        "nodesReady": 3,
+        "nodesTotal": 3,
+        "namespaces": 9,
+        "podsTotal": 606,
+        "podsByPhase": {
+          "Running": 605,
+          "Pending": 1
+        },
+        "cpuCommitPct": 41,
+        "memCommitPct": 48,
+        "cpuUtilPct": 22,
+        "memUtilPct": 40,
+        "verdict": "balanced",
+        "metricsAvailable": true,
+        "problemPods": [
+          {
+            "namespace": "payments",
+            "name": "ledger-writer-7d9f8b6c5-zq4xn",
+            "phase": "Running",
+            "ready": "0/1",
+            "restarts": 31,
+            "reason": "CrashLoopBackOff"
+          },
+          {
+            "namespace": "batch",
+            "name": "etl-nightly-28774560-p8vtd",
+            "phase": "Pending",
+            "ready": "0/1",
+            "restarts": 0,
+            "reason": "ImagePullBackOff"
+          }
+        ]
+      }
+    },
+    "live": {}
+  },
+  "criteria": {
+    "toolChecks": [
+      {
+        "id": "uses-health-summary",
+        "desc": "uses the cluster health summary instead of paging through every pod",
+        "tools": [
+          "cluster_health"
+        ],
+        "critical": false
+      }
+    ],
+    "maxToolCalls": 4,
+    "mustMatch": [
+      {
+        "id": "names-crashlooping-pod",
+        "desc": "names payments/ledger-writer as crash-looping",
+        "any": [
+          "ledger-writer"
+        ]
+      },
+      {
+        "id": "names-image-pull-pod",
+        "desc": "names batch/etl-nightly as failing to pull its image",
+        "any": [
+          "etl-nightly"
+        ]
+      }
+    ],
+    "mustNotMatch": [
+      {
+        "id": "no-all-healthy-claim",
+        "desc": "does not say the cluster is healthy or nothing is wrong",
+        "any": [
+          "(everything|all (pods|workloads|namespaces|services))( is| are)? (healthy|running|fine|ok)",
+          "nothing (is )?(broken|wrong)",
+          "no (problems|issues)"
+        ]
+      },
+      {
+        "id": "does-not-dump-pods",
+        "desc": "does not dump healthy tenant pods into the answer",
+        "any": [
+          "tenant-[a-d]/web"
+        ],
+        "critical": false
+      }
+    ]
+  }
+}

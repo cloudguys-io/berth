@@ -1,0 +1,43 @@
+{
+  "id": "failing-rollout",
+  "title": "Stalled rollout: new image tag does not exist",
+  "category": "diagnosis",
+  "description": "checkout was updated to a tag that cannot be pulled. The new ReplicaSet is stuck in ImagePullBackOff; the two old pods keep serving. The model should say the rollout is stalled but traffic is still served, and propose a rollback or tag fix without claiming to have done it.",
+  "prompt": "I deployed a new version of checkout in the shop namespace and the rollout seems stuck. What happened and what should I do?",
+  "fixture": {
+    "snapshot": {
+      "pods": [
+        {"namespace": "shop", "name": "checkout-7f8c5d6b4-2jq9s", "phase": "Running", "ready": "1/1", "restarts": 0},
+        {"namespace": "shop", "name": "checkout-7f8c5d6b4-r5ntd", "phase": "Running", "ready": "1/1", "restarts": 0},
+        {"namespace": "shop", "name": "checkout-9c4b7d8f6-lw8xm", "phase": "Pending", "ready": "0/1", "restarts": 0, "reason": "ImagePullBackOff"}
+      ],
+      "events": [
+        {"type": "Warning", "reason": "Failed", "object": "pod/checkout-9c4b7d8f6-lw8xm", "namespace": "shop", "message": "Failed to pull image \"registry.example.com/shop/checkout:v2.4.1-rc\": manifest unknown: tag v2.4.1-rc not found", "age": "6m"},
+        {"type": "Warning", "reason": "BackOff", "object": "pod/checkout-9c4b7d8f6-lw8xm", "namespace": "shop", "message": "Back-off pulling image \"registry.example.com/shop/checkout:v2.4.1-rc\"", "age": "1m"}
+      ],
+      "health": {
+        "version": "v1.31.4", "nodesReady": 3, "nodesTotal": 3, "namespaces": 6, "podsTotal": 7,
+        "podsByPhase": {"Running": 6, "Pending": 1}, "cpuCommitPct": 43, "memCommitPct": 50, "cpuUtilPct": 23, "memUtilPct": 41,
+        "verdict": "balanced", "metricsAvailable": true,
+        "problemPods": [{"namespace": "shop", "name": "checkout-9c4b7d8f6-lw8xm", "phase": "Pending", "ready": "0/1", "restarts": 0, "reason": "ImagePullBackOff"}]
+      }
+    },
+    "live": {
+      "describes": {
+        "deployment/shop/checkout": "Name: checkout\nNamespace: shop\nReplicas: 2 desired | 3 total | 2 available | 1 unavailable\nStrategy: RollingUpdate (maxSurge 1, maxUnavailable 0)\nImage: registry.example.com/shop/checkout:v2.4.1-rc\nConditions: Available=True, Progressing=True (ReplicaSet checkout-9c4b7d8f6 is progressing; deadline not yet exceeded)\nOldReplicaSets: checkout-7f8c5d6b4 (2/2, image registry.example.com/shop/checkout:v2.4.0)\nNewReplicaSet: checkout-9c4b7d8f6 (0/1)\nRevision history: 7 (v2.4.0), 8 (v2.4.1-rc)",
+        "pod/shop/checkout-9c4b7d8f6-lw8xm": "Name: checkout-9c4b7d8f6-lw8xm\nNamespace: shop\nStatus: Pending\nContainers:\n  checkout:\n    Image: registry.example.com/shop/checkout:v2.4.1-rc\n    State: Waiting (ImagePullBackOff)\nEvents: Failed to pull image: manifest unknown: tag v2.4.1-rc not found"
+      }
+    }
+  },
+  "criteria": {
+    "toolChecks": [
+      {"id": "inspects-rollout", "desc": "inspects the deployment, pod or events (describe_resource, get_events, list_pods)", "tools": ["describe_resource", "get_events", "list_pods", "cluster_health"]}
+    ],
+    "maxToolCalls": 6,
+    "mustMatch": [
+      {"id": "names-pull-failure", "desc": "identifies the image pull failure on the new tag v2.4.1-rc", "any": ["v2\\.4\\.1-rc", "manifest unknown", "image ?pull", "tag.{0,30}(not found|doesn.t exist|does not exist|missing)"]},
+      {"id": "old-pods-serving", "desc": "states that the old ReplicaSet/pods are still serving (not an outage)", "any": ["(old|previous|existing|v2\\.4\\.0|two|2).{0,60}(still|continue|keep).{0,40}(serv|running|available|handl)", "(still|continue).{0,40}(serv|running|available)", "(existing|old|previous).{0,40}(pods?|replicas?|replicaset).{0,40}(running|v2\\.4\\.0)", "no (outage|downtime|impact)", "not (an )?outage"]},
+      {"id": "proposes-rollback-or-tag-fix", "desc": "proposes rollback (rollout undo) or correcting the tag", "any": ["rollout undo", "roll\\s?back", "revert", "(correct|fix|use|push|set).{0,40}(tag|image)"]}
+    ]
+  }
+}

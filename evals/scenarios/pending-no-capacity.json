@@ -1,0 +1,53 @@
+{
+  "id": "pending-no-capacity",
+  "title": "Pending pod: no node has enough CPU",
+  "category": "diagnosis",
+  "description": "A new deployment's pod is Pending. The scheduler event says all three nodes have insufficient CPU; cluster capacity commit is near 100%.",
+  "prompt": "My new report-generator pod in the analytics namespace has been Pending for 10 minutes. Why isn't it starting?",
+  "fixture": {
+    "snapshot": {
+      "pods": [{"namespace": "analytics", "name": "report-generator-7d9b6c5f8-hk2pw", "phase": "Pending", "ready": "0/1", "restarts": 0}],
+      "events": [
+        {"type": "Warning", "reason": "FailedScheduling", "object": "pod/report-generator-7d9b6c5f8-hk2pw", "namespace": "analytics", "message": "0/3 nodes are available: 3 Insufficient cpu. preemption: 0/3 nodes are available: 3 No preemption victims found for incoming pod.", "age": "9m"}
+      ],
+      "nodes": [
+        {"name": "node-a", "ready": true, "cpuCommitPct": 96, "memCommitPct": 58, "cpuUtilPct": 31, "memUtilPct": 44},
+        {"name": "node-b", "ready": true, "cpuCommitPct": 94, "memCommitPct": 55, "cpuUtilPct": 28, "memUtilPct": 41},
+        {"name": "node-c", "ready": true, "cpuCommitPct": 97, "memCommitPct": 60, "cpuUtilPct": 33, "memUtilPct": 46}
+      ],
+      "health": {
+        "version": "v1.31.4", "nodesReady": 3, "nodesTotal": 3, "namespaces": 5, "podsTotal": 5,
+        "podsByPhase": {"Running": 4, "Pending": 1}, "cpuCommitPct": 96, "memCommitPct": 58, "cpuUtilPct": 31, "memUtilPct": 44,
+        "verdict": "over-committed on cpu", "note": "cpu reserved far above observed use", "metricsAvailable": true,
+        "problemPods": [{"namespace": "analytics", "name": "report-generator-7d9b6c5f8-hk2pw", "phase": "Pending", "ready": "0/1", "restarts": 0}]
+      },
+      "capacity": {
+        "metricsAvailable": true, "pdbCount": 2, "unscheduledPods": 1,
+        "pools": [{
+          "key": "m5.large/zone-a/no-taints", "instanceType": "m5.large", "zone": "zone-a", "nodes": 3, "nodesReady": 3,
+          "cpuAllocCores": 5.8, "memAllocGiB": 22.0, "podSlots": 87, "cpuReqCores": 5.5, "memReqGiB": 12.8, "scheduledPods": 4,
+          "cpuUsedCores": 1.8, "memUsedGiB": 9.6, "cpuCommitPct": 95, "memCommitPct": 58, "cpuUtilPct": 31, "memUtilPct": 44,
+          "podDensityPct": 5, "bindingConstraint": "cpu", "classification": "cpu-reservation-bound", "rationale": "requests consume 95% of allocatable CPU while observed use is 31%"
+        }]
+      }
+    },
+    "live": {
+      "describes": {
+        "pod/analytics/report-generator-7d9b6c5f8-hk2pw": "Name: report-generator-7d9b6c5f8-hk2pw\nNamespace: analytics\nStatus: Pending\nNode: <none>\nContainers:\n  report:\n    Image: registry.example.com/analytics/report:2.0.4\n    Requests: cpu 1500m, memory 1Gi\nConditions: PodScheduled=False (Unschedulable)\nEvents: FailedScheduling 0/3 nodes are available: 3 Insufficient cpu"
+      }
+    }
+  },
+  "criteria": {
+    "toolChecks": [
+      {"id": "reads-scheduler-evidence", "desc": "reads scheduler evidence (get_events, describe_resource, analyze_capacity or cluster_health)", "tools": ["get_events", "describe_resource", "analyze_capacity", "cluster_health"]}
+    ],
+    "maxToolCalls": 6,
+    "mustMatch": [
+      {"id": "names-insufficient-cpu", "desc": "identifies insufficient CPU / no node can fit the pod's request", "any": ["insufficient\\s+cpu", "not enough\\s+(cpu|capacity)", "cpu.{0,40}(exhausted|fully (reserved|committed)|no room|too (high|much))", "(no|none of the).{0,30}node.{0,60}(capacity|room|fit)"]},
+      {"id": "gives-options", "desc": "offers a way forward (add a node, lower the 1500m request, or free reserved CPU)", "any": ["add.{0,20}node", "scale.{0,20}(node|cluster)", "(lower|reduce|decrease).{0,40}(request|cpu)", "right-?siz", "free (up )?cpu"]}
+    ],
+    "mustNotMatch": [
+      {"id": "no-crash-misdiagnosis", "desc": "does not misdiagnose the Pending pod as crashing or an image problem", "any": ["crashloop", "oomkill", "imagepull"]}
+    ]
+  }
+}
