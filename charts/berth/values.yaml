@@ -85,7 +85,7 @@ ai:
   anthropic:
     apiKey: ""
     existingSecret: ""
-    model: "claude-opus-5"   # or claude-sonnet-5 for lower cost
+    model: "claude-sonnet-5-5"   # or claude-opus-5-5
     baseUrl: ""              # optional gateway/proxy
 
   # Claude via Amazon Bedrock. Enterprise. Provide a Bedrock bearer token inline

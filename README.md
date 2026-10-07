@@ -2,6 +2,8 @@
 
 > September 2026 upgrade: [read the operations guide](docs/production-readiness.md). Authentication, ticket-based logs and single-writer storage require coordinated backend/chart upgrades.
 
+> **New in 0.5.0** (restricted beta): a smaller AI SRE toolset (15 tools), sturdier agent loops, corrected cost estimates, and [published evaluation data](evals/). See the [changelog](CHANGELOG.md). The assistant remains read-only; there is still no SSO, per-user authorisation, audit viewer or multi-cluster support.
+
 
 **Berth is a self-hosted Kubernetes dashboard** for observing and managing
 clusters from a single web UI. Observe nodes, pods, deployments, and services;
@@ -68,7 +70,7 @@ Pin a specific version (recommended for production), or install a pre-release:
 
 ```sh
 helm upgrade --install berth oci://ghcr.io/unishsys/charts/berth \
-  --version 0.4.1 --namespace berth --create-namespace
+  --version 0.5.0 --namespace berth --create-namespace
 ```
 
 Pre-release chart versions, when published, must be requested by their exact version.
@@ -117,7 +119,7 @@ export AUTH_TOKEN="$(openssl rand -hex 32)"
 docker run --rm -p 127.0.0.1:8081:8081 \
   -e AUTH_MODE=token -e AUTH_TOKEN -e BIND_ADDRESS=0.0.0.0 \
   -v "$HOME/.kube/config:/home/nonroot/.kube/config:ro" \
-  ghcr.io/unishsys/berth:0.4.1 remotecluster
+  ghcr.io/unishsys/berth:0.5.0 remotecluster
 # then open http://localhost:8081/  (AUTH_MODE defaults to token; configure AUTH_TOKEN with at least 32 random characters)
 ```
 
@@ -125,7 +127,7 @@ Images are multi-arch (`linux/amd64`, `linux/arm64`), ship an SBOM + provenance,
 and are **cosign-signed** (keyless). Verify:
 
 ```sh
-cosign verify ghcr.io/unishsys/berth:0.4.1 \
+cosign verify ghcr.io/unishsys/berth:0.5.0 \
   --certificate-identity-regexp 'https://github.com/unishsys/.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
@@ -138,8 +140,8 @@ against `SHA256SUMS`, then run it against your kubeconfig:
 
 ```sh
 # macOS (Apple Silicon) example
-curl -sSLO https://github.com/unishsys/berth/releases/download/v0.4.1/berth-darwin-arm64
-curl -sSLO https://github.com/unishsys/berth/releases/download/v0.4.1/SHA256SUMS
+curl -sSLO https://github.com/unishsys/berth/releases/download/v0.5.0/berth-darwin-arm64
+curl -sSLO https://github.com/unishsys/berth/releases/download/v0.5.0/SHA256SUMS
 shasum -a 256 -c SHA256SUMS --ignore-missing   # verify
 chmod +x berth-darwin-arm64
 ./berth-darwin-arm64 remotecluster           # serves the UI on :8081
@@ -247,7 +249,7 @@ an anonymous caller can never spend your key.
 | `ai.ollama.host` / `ai.ollama.model` | in-cluster svc / `sabbir/berth-sre` | Local model endpoint and tag. |
 | `ai.ollama.numCtx` | `16384` | Ollama context window, do not lower (smaller loops the model). |
 | `ai.anthropic.apiKey` / `.existingSecret` | _(unset)_ | Anthropic API key inline or from a Secret (`ANTHROPIC_API_KEY`). |
-| `ai.anthropic.model` | `claude-opus-5` | e.g. `claude-sonnet-5` for lower cost. |
+| `ai.anthropic.model` | `claude-sonnet-5-5` | e.g. `claude-opus-5-5`. |
 | `ai.bedrock.token` / `.existingSecret` | _(unset)_ | Bedrock bearer token; empty uses the pod's AWS credential chain. |
 | `ai.bedrock.region` / `.model` | `us-east-1` / _(backend default)_ | Bedrock region and model id. |
 | `ai.effort` / `ai.thinking` / `ai.maxTokens` | `high` / `adaptive` / `8192` | Shared Claude behaviour. |
@@ -255,6 +257,8 @@ an anonymous caller can never spend your key.
 | `ai.guardrails.rateLimitPerMinute` / `.maxConcurrentRuns` | `20` / `4` | Per-principal rate limit and concurrency cap. |
 | `ai.allowRawDiagnostics` | `false` | Explicitly allow raw logs/descriptions to reach your model. |
 | `ai.persistence.enabled` / `.dataDir` / `.size` | `false` / `/data/ai` / `1Gi` | Persist the usage ledger, incident memory, and Settings overrides (SQLite PVC). |
+
+**Choosing a local model.** In our own small synthetic tests, the default model passed about as often as stock `qwen3:8b`, and `qwen3.5:9b` answered faster (the build we tested targets Apple silicon; we have not tested Linux or CPU-only hosts). Treat the results as a starting point, and check answers against the tool calls Berth shows you. Details and limits: [`evals/`](evals/).
 
 The rootfs is read-only, so the ledger needs a writable volume: enable
 `ai.persistence` (or leave it off to keep usage/memory in-memory). The store is a
@@ -304,7 +308,7 @@ ai:
   defaultProvider: anthropic
   anthropic:
     existingSecret: berth-anthropic   # Secret with key ANTHROPIC_API_KEY
-    model: claude-opus-5
+    model: claude-sonnet-5-5
   guardrails:
     dailyTokenBudget: 2000000
     monthlyTokenBudget: 20000000
@@ -379,6 +383,10 @@ extraVolumeMounts:
     subPath: ca.crt
     readOnly: true
 ```
+
+## Evaluation
+
+We publish how we test the AI SRE: 17 synthetic scenarios, the results of repeated runs with confidence intervals, a log of the scoring changes we made and why, and a claims ledger mapping each public number to a run. The harness that runs the scenarios is private (it is part of the closed application source), so you can audit the data but not re-run it yet. Start with [`evals/README.md`](evals/README.md). The data is licensed CC BY 4.0.
 
 ## Support & legal
 
