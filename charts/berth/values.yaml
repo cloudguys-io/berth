@@ -1,7 +1,7 @@
 replicaCount: 1
 
 image:
-  repository: ghcr.io/unishsys/berth
+  repository: ghcr.io/cloudguys-io/berth
   # Empty defaults to the chart appVersion (pinned, immutable). Override to pin
   # a specific tag/digest. Avoid "latest" in production.
   tag: ""

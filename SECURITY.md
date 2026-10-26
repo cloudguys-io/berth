@@ -11,7 +11,7 @@ issues, Discussions, or pull requests.
 
 Instead, report privately through GitHub Security Advisories:
 
-1. Go to https://github.com/unishsys/berth/security/advisories/new
+1. Go to https://github.com/cloudguys-io/berth/security/advisories/new
 2. Describe the issue, the affected version, and how to reproduce it.
 
 We will acknowledge your report within 3 business days and keep you

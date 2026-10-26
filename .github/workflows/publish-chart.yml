@@ -1,7 +1,7 @@
 name: Publish Helm chart
 
 # Packages the Berth Helm chart and pushes it to GHCR as an OCI artifact:
-#   oci://ghcr.io/unishsys/charts/berth
+#   oci://ghcr.io/cloudguys-io/charts/berth
 #
 # Triggers:
 #   - release published:  the enterprise release pipeline creates a `vX.Y.Z`
@@ -34,8 +34,8 @@ permissions:
 
 env:
   REGISTRY: ghcr.io
-  # Chart lands at oci://ghcr.io/unishsys/charts/berth (chart name = berth).
-  OCI_REPO: ghcr.io/unishsys/charts
+  # Chart lands at oci://ghcr.io/cloudguys-io/charts/berth (chart name = berth).
+  OCI_REPO: ghcr.io/cloudguys-io/charts
 
 jobs:
   lint:

@@ -21,9 +21,9 @@ are:
 ## Getting help
 
 - **Questions and troubleshooting:** open a
-  [Q&A Discussion](https://github.com/unishsys/berth/discussions/categories/q-a).
+  [Q&A Discussion](https://github.com/cloudguys-io/berth/discussions/categories/q-a).
 - **Feature ideas:** open an
-  [Ideas Discussion](https://github.com/unishsys/berth/discussions/categories/ideas)
+  [Ideas Discussion](https://github.com/cloudguys-io/berth/discussions/categories/ideas)
   so others can weigh in and upvote.
 - **Documentation:** start at https://berth.agrohi.com.
 
@@ -32,7 +32,7 @@ bugs and tracked work.
 
 ## Reporting a bug
 
-1. Search [existing issues](https://github.com/unishsys/berth/issues) and
+1. Search [existing issues](https://github.com/cloudguys-io/berth/issues) and
    Discussions first.
 2. Open a new issue using the **Bug report** template.
 3. Include your Berth version, how you deployed it, your Kubernetes

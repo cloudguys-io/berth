@@ -2,7 +2,7 @@
 
 > September 2026 upgrade: [read the operations guide](docs/production-readiness.md). Authentication, ticket-based logs and single-writer storage require coordinated backend/chart upgrades.
 
-> **New in 0.5.0** (restricted beta): a smaller AI SRE toolset (15 tools), sturdier agent loops, corrected cost estimates, and [published evaluation data](evals/). See the [changelog](CHANGELOG.md). The assistant remains read-only; there is still no SSO, per-user authorisation, audit viewer or multi-cluster support.
+> **New in 0.5.1** (restricted beta): images and the Helm chart are now published under `ghcr.io/cloudguys-io` (the 0.5.0 chart's default image no longer resolves, so upgrade to 0.5.1), log streams reconnect after a dropped connection, and Kubernetes permission errors are reported as such. See the [changelog](CHANGELOG.md). The assistant remains read-only; there is still no SSO, per-user authorisation, audit viewer or multi-cluster support.
 
 
 **Berth is a self-hosted Kubernetes dashboard** for observing and managing
@@ -21,8 +21,8 @@ This repository is the **public distribution** for Berth, the Helm chart,
 release binaries, and container image live here. The source is not public.
 
 - Website & sign-up: **https://berth.cloudguys.io**
-- Container image: `ghcr.io/unishsys/berth`
-- Helm chart (OCI): `oci://ghcr.io/unishsys/charts/berth`
+- Container image: `ghcr.io/cloudguys-io/berth`
+- Helm chart (OCI): `oci://ghcr.io/cloudguys-io/charts/berth`
 
 ---
 
@@ -62,15 +62,15 @@ The chart is published as an **OCI artifact** on GHCR. Helm 3.8+ is required.
 ```sh
 # Installs the latest stable release. Defaults to secure token auth and
 # generates an auth token for you.
-helm upgrade --install berth oci://ghcr.io/unishsys/charts/berth \
+helm upgrade --install berth oci://ghcr.io/cloudguys-io/charts/berth \
   --namespace berth --create-namespace
 ```
 
 Pin a specific version (recommended for production), or install a pre-release:
 
 ```sh
-helm upgrade --install berth oci://ghcr.io/unishsys/charts/berth \
-  --version 0.5.0 --namespace berth --create-namespace
+helm upgrade --install berth oci://ghcr.io/cloudguys-io/charts/berth \
+  --version 0.5.1 --namespace berth --create-namespace
 ```
 
 Pre-release chart versions, when published, must be requested by their exact version.
@@ -85,7 +85,7 @@ kubectl -n berth port-forward svc/berth 8081:8081   # then open http://localhost
 To expose it publicly, enable the Ingress and TLS:
 
 ```sh
-helm upgrade --install berth oci://ghcr.io/unishsys/charts/berth --reuse-values \
+helm upgrade --install berth oci://ghcr.io/cloudguys-io/charts/berth --reuse-values \
   --set ingress.enabled=true --set ingress.className=nginx \
   --set ingress.host=berth.example.com \
   --set ingress.tls.enabled=true --set ingress.tls.secretName=berth-tls
@@ -94,10 +94,10 @@ helm upgrade --install berth oci://ghcr.io/unishsys/charts/berth --reuse-values 
 **Apply your license:**
 
 ```sh
-helm upgrade --install berth oci://ghcr.io/unishsys/charts/berth --reuse-values \
+helm upgrade --install berth oci://ghcr.io/cloudguys-io/charts/berth --reuse-values \
   --set license.key='<YOUR_KEY>'
 # or reference a Secret that holds a LICENSE_KEY key:
-helm upgrade --install berth oci://ghcr.io/unishsys/charts/berth --reuse-values \
+helm upgrade --install berth oci://ghcr.io/cloudguys-io/charts/berth --reuse-values \
   --set license.existingSecret=my-license
 ```
 
@@ -119,7 +119,7 @@ export AUTH_TOKEN="$(openssl rand -hex 32)"
 docker run --rm -p 127.0.0.1:8081:8081 \
   -e AUTH_MODE=token -e AUTH_TOKEN -e BIND_ADDRESS=0.0.0.0 \
   -v "$HOME/.kube/config:/home/nonroot/.kube/config:ro" \
-  ghcr.io/unishsys/berth:0.5.0 remotecluster
+  ghcr.io/cloudguys-io/berth:0.5.1 remotecluster
 # then open http://localhost:8081/  (AUTH_MODE defaults to token; configure AUTH_TOKEN with at least 32 random characters)
 ```
 
@@ -127,21 +127,21 @@ Images are multi-arch (`linux/amd64`, `linux/arm64`), ship an SBOM + provenance,
 and are **cosign-signed** (keyless). Verify:
 
 ```sh
-cosign verify ghcr.io/unishsys/berth:0.5.0 \
-  --certificate-identity-regexp 'https://github.com/unishsys/.*' \
+cosign verify ghcr.io/cloudguys-io/berth:0.5.1 \
+  --certificate-identity-regexp 'https://github.com/cloudguys-io/.*' \
   --certificate-oidc-issuer https://token.actions.githubusercontent.com
 ```
 
 ### Standalone binary
 
 Download the binary for your OS/arch from the
-[latest release](https://github.com/unishsys/berth/releases/latest), verify it
+[latest release](https://github.com/cloudguys-io/berth/releases/latest), verify it
 against `SHA256SUMS`, then run it against your kubeconfig:
 
 ```sh
 # macOS (Apple Silicon) example
-curl -sSLO https://github.com/unishsys/berth/releases/download/v0.5.0/berth-darwin-arm64
-curl -sSLO https://github.com/unishsys/berth/releases/download/v0.5.0/SHA256SUMS
+curl -sSLO https://github.com/cloudguys-io/berth/releases/download/v0.5.1/berth-darwin-arm64
+curl -sSLO https://github.com/cloudguys-io/berth/releases/download/v0.5.1/SHA256SUMS
 shasum -a 256 -c SHA256SUMS --ignore-missing   # verify
 chmod +x berth-darwin-arm64
 ./berth-darwin-arm64 remotecluster           # serves the UI on :8081
@@ -185,14 +185,14 @@ Set these via Helm (`--set`) or as environment variables on the container:
 | `ai.anthropic.apiKey` / `ANTHROPIC_API_KEY` | _(unset)_ | Claude via the Anthropic API (Enterprise). |
 | `ai.persistence.enabled` | `false` | Persist the AI usage ledger + incident memory (SQLite). |
 
-See `helm show values oci://ghcr.io/unishsys/charts/berth` for the full list.
+See `helm show values oci://ghcr.io/cloudguys-io/charts/berth` for the full list.
 
 ## Helm configuration
 
 The chart is built for real clusters, scheduling onto tainted pools, policy
 engines, private registries, HA, and locked-down security all have first-class
 flags. Pass them with `--set`/`--set-json`, or (recommended) a values file:
-`helm upgrade --install berth oci://ghcr.io/unishsys/charts/berth -n berth -f my-values.yaml`.
+`helm upgrade --install berth oci://ghcr.io/cloudguys-io/charts/berth -n berth -f my-values.yaml`.
 
 ### Scheduling & availability
 
@@ -226,7 +226,7 @@ flags. Pass them with `--set`/`--set-json`, or (recommended) a values file:
 
 | Value | Default | Purpose |
 | --- | --- | --- |
-| `image.repository` / `image.tag` | `ghcr.io/unishsys/berth` / appVersion | Use a mirrored image / pin a version. |
+| `image.repository` / `image.tag` | `ghcr.io/cloudguys-io/berth` / appVersion | Use a mirrored image / pin a version. |
 | `imagePullSecrets` | `[]` | Pull from a private/mirrored registry (air-gapped). |
 | `service.type` / `service.annotations` | `ClusterIP` / `{}` | e.g. an internal cloud load balancer. |
 | `ingress.*` | disabled | Expose the UI via Ingress + TLS. |

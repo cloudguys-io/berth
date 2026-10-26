@@ -2,6 +2,27 @@
 
 Berth is a restricted beta. Entries describe the distribution published here (chart, image, binaries).
 
+## [0.5.1] - 2026-10-26
+
+### Changed
+
+- **Images and the Helm chart move to `ghcr.io/cloudguys-io`.** The GitHub organisation was renamed from `unishsys` to `cloudguys-io`, and the container registry does not redirect the old owner. Use `oci://ghcr.io/cloudguys-io/charts/berth` and `ghcr.io/cloudguys-io/berth`. The chart's default `image.repository` is now `ghcr.io/cloudguys-io/berth`; the 0.5.0 chart defaults to the old path, which no longer resolves, so an install of chart 0.5.0 needs `--set image.repository=ghcr.io/cloudguys-io/berth` or an upgrade to 0.5.1.
+- Releases from 0.5.1 are signed by workflows in `github.com/cloudguys-io`. Update the `--certificate-identity-regexp` you pass to `cosign verify`.
+
+### Fixed
+
+- Log streams reconnect after the connection drops, with backoff and a fresh ticket, and skip the lines the server replays so nothing is shown twice. The view says when a stream is interrupted, and offers a Reconnect button when retries run out. Previously a dropped stream stopped updating with no indication.
+- A change Kubernetes refuses is reported with its real status (403 permission denied, 404 not found, 409 conflict, 422 invalid) and an explanation, instead of a generic 500 and "Request failed with status code 500".
+- Pressing Enter in the replica editor applied the new count to the table without sending it to the cluster. It now scales the deployment, and a refused change returns the row to the real count.
+
+### Security
+
+- Dependency updates for newly published advisories: `dompurify` (critical), `follow-redirects`, `markdown-it`, `vite` and the Quasar CLI in the dashboard; Go 1.27.3 and `golang.org/x/net` v0.60.0 in the server.
+
+### Testing
+
+- A browser-to-Kubernetes acceptance suite runs on every change: login and log-stream tickets, log reconnects, changes and their audit records, edit conflicts, refused writes (no token, no license, expired license, Kubernetes RBAC) and model provider failures.
+
 ## [0.5.0] - 2026-10-07
 
 ### Added
@@ -38,4 +59,5 @@ Berth is a restricted beta. Entries describe the distribution published here (ch
 
 - Several statements about recommended models were reworded where our evaluation did not support them.
 
-[0.5.0]: https://github.com/unishsys/berth/releases/tag/v0.5.0
+[0.5.1]: https://github.com/cloudguys-io/berth/releases/tag/v0.5.1
+[0.5.0]: https://github.com/cloudguys-io/berth/releases/tag/v0.5.0
